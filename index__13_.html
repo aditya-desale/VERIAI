@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VeriAI — Trust Verification Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<!-- FAVICON: Inline SVG as data URI -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300f5ff'/%3E%3Cstop offset='100%25' stop-color='%230077ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%230a0a1a'/%3E%3Cpolygon points='32,8 56,20 56,44 32,56 8,44 8,20' fill='none' stroke='url(%23g)' stroke-width='2.5'/%3E%3Ctext x='32' y='38' text-anchor='middle' font-family='Arial Black' font-size='18' font-weight='900' fill='url(%23g)'%3EV%3C/text%3E%3C/svg%3E">
+
+<style>
+:root {
+  --c1: #00f5ff;
+  --c2: #0077ff;
+  --c3: #7b2fff;
+  --cg: linear-gradient(135deg, #00f5ff, #0077ff, #7b2fff);
+  --bg: #030510;
+  --bg2: #070b1a;
+  --bg3: #0b1025;
+  --border: rgba(0,245,255,0.12);
+  --border2: rgba(0,245,255,0.25);
+  --t: #e8f4ff;
+  --t2: #7a9ab8;
+  --t3: #3a5570;
+  --safe: #00ff88;
+  --warn: #ffb800;
+  --danger: #ff3860;
+  --glow: rgba(0,245,255,0.15);
+  --glow2: rgba(0,119,255,0.2);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--t);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* ── CUSTOM CURSOR ── */
+#cur { position:fixed; width:8px; height:8px; background:var(--c1); border-radius:50%; pointer-events:none; z-index:9999; transform:translate(-50%,-50%); mix-blend-mode:screen; transition:background .2s; box-shadow:0 0 12px var(--c1); }
+#cur2 { position:fixed; width:32px; height:32px; border:1px solid rgba(0,245,255,0.5); border-radius:50%; pointer-events:none; z-index:9998; transform:translate(-50%,-50%); transition:all .12s cubic-bezier(.17,.67,.46,1.07); }
+
+/* ── BACKGROUND ── */
+#bgc { position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; opacity:0.35; }
+.scan-lines { position:fixed; inset:0; background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,245,255,0.015) 2px, rgba(0,245,255,0.015) 4px); pointer-events:none; z-index:1; animation:scanmove 8s linear infinite; }
+@keyframes scanmove { 0%{background-position:0 0} 100%{background-position:0 100px} }
+.vignette { position:fixed; inset:0; background:radial-gradient(ellipse at center, transparent 50%, rgba(3,5,16,0.8) 100%); pointer-events:none; z-index:1; }
+
+/* ── AUTH SCREEN ── */
+#auth { position:fixed; inset:0; z-index:1000; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px; }
+#auth::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse 80% 60% at 50% 50%, rgba(0,119,255,0.08) 0%, transparent 70%); }
+
+.abox {
+  width:100%; max-width:420px;
+  background: linear-gradient(135deg, rgba(7,11,26,0.95), rgba(11,16,37,0.95));
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 44px 36px;
+  position: relative;
+  z-index:2;
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+}
+.abox::before {
+  content:'';
+  position:absolute; inset:-1px;
+  background: linear-gradient(135deg, var(--c1), var(--c2), var(--c3));
+  opacity:0.25;
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+  z-index:-1;
+}
+.abox::after {
+  content:'SECURE CONNECTION ESTABLISHED';
+  position:absolute; top:10px; right:16px;
+  font-family:'Space Mono',monospace;
+  font-size:8px; color:var(--safe); letter-spacing:2px; opacity:0.5;
+}
+
+/* Auth Logo */
+.alogo { display:flex; align-items:center; gap:12px; margin-bottom:30px; justify-content:center; }
+.alogo-hex {
+  width:48px; height:48px;
+  background: linear-gradient(135deg, var(--c1), var(--c2));
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Space Mono',monospace; font-size:13px; font-weight:700; color:#000;
+  position:relative;
+}
+.alogo-hex::before {
+  content:'';
+  position:absolute; inset:2px;
+  background: var(--bg2);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.alogo-hex span { position:relative; z-index:1; font-size:14px; background:var(--cg); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.alogo-tx { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:3px; background:var(--cg); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+
+.atabs { display:flex; gap:0; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:2px; margin-bottom:26px; overflow:hidden; }
+.atab { flex:1; padding:10px; text-align:center; cursor:pointer; font-size:12px; font-weight:700; color:var(--t3); transition:all .2s; letter-spacing:2px; text-transform:uppercase; font-family:'Space Mono',monospace; }
+.atab.on { background:rgba(0,245,255,0.1); color:var(--c1); border-bottom:2px solid var(--c1); }
+
+.aform { display:none; } .aform.on { display:block; }
+.atitle { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:2px; margin-bottom:3px; }
+.asub { color:var(--t3); font-size:12px; margin-bottom:22px; font-family:'Space Mono',monospace; letter-spacing:1px; }
+
+.fi { margin-bottom:14px; }
+.fi label { display:block; font-size:10px; font-weight:700; color:var(--c1); margin-bottom:6px; letter-spacing:2px; text-transform:uppercase; font-family:'Space Mono',monospace; }
+.fi input {
+  width:100%; background:rgba(0,0,0,0.4); border:1px solid var(--border);
+  border-left:2px solid var(--c2);
+  padding:11px 14px; color:var(--t); font-size:14px; font-family:'Rajdhani',sans-serif;
+  font-weight:500; transition:all .2s; outline:none; border-radius:2px;
+}
+.fi input:focus { border-color:var(--c1); border-left-color:var(--c1); box-shadow:0 0 0 2px rgba(0,245,255,0.08); }
+.fi input::placeholder { color:var(--t3); }
+
+.abtn {
+  width:100%; padding:13px; background:transparent;
+  border:1px solid var(--c1); color:var(--c1);
+  font-size:13px; font-weight:700; cursor:pointer; transition:all .3s;
+  font-family:'Space Mono',monospace; margin-top:4px; letter-spacing:3px;
+  text-transform:uppercase; position:relative; overflow:hidden; border-radius:2px;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+.abtn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg, var(--c1), var(--c2)); opacity:0; transition:opacity .3s; }
+.abtn:hover::before { opacity:0.15; }
+.abtn:hover { box-shadow:0 0 20px rgba(0,245,255,0.3); color:#fff; }
+.abtn span { position:relative; z-index:1; }
+
+.adiv { display:flex; align-items:center; gap:10px; margin:18px 0; color:var(--t3); font-size:10px; font-family:'Space Mono',monospace; letter-spacing:2px; }
+.adiv::before,.adiv::after { content:''; flex:1; height:1px; background:var(--border); }
+.soc { display:flex; gap:8px; }
+.socbtn { flex:1; padding:10px; background:rgba(0,0,0,0.3); border:1px solid var(--border); color:var(--t2); font-size:11px; cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:center; gap:7px; font-family:'Rajdhani',sans-serif; font-weight:600; letter-spacing:1px; border-radius:2px; }
+.socbtn:hover { border-color:var(--border2); color:var(--t); }
+.aerr { color:var(--danger); font-size:11px; margin-top:7px; display:none; font-family:'Space Mono',monospace; }
+.aok { color:var(--safe); font-size:11px; margin-top:7px; display:none; font-family:'Space Mono',monospace; }
+
+/* ── MAIN APP ── */
+#app { position:relative; z-index:2; min-height:100vh; display:none; }
+
+/* ── NAV ── */
+nav {
+  position:sticky; top:0; z-index:100;
+  background:rgba(3,5,16,0.9); backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:0 max(20px,calc((100vw - 1200px)/2));
+  display:flex; align-items:center; justify-content:space-between; height:64px;
+}
+nav::after { content:''; position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg, transparent, var(--c1), var(--c2), transparent); opacity:0.4; }
+
+.nlogo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+.nlogo-hex {
+  width:34px; height:34px;
+  background: linear-gradient(135deg, var(--c1), var(--c2));
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display:flex; align-items:center; justify-content:center; position:relative;
+}
+.nlogo-hex::before {
+  content:'';
+  position:absolute; inset:2px;
+  background: var(--bg2);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.nlogo-hex span { position:relative; z-index:1; font-family:'Space Mono',monospace; font-size:10px; font-weight:700; background:var(--cg); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.nlogo-tx { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:3px; color:var(--t); }
+.nlogo-tx em { background:var(--cg); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; font-style:normal; }
+
+.nlinks { display:flex; align-items:center; gap:28px; }
+.nlink { color:var(--t3); text-decoration:none; font-size:11px; font-weight:700; transition:color .2s; letter-spacing:2px; text-transform:uppercase; font-family:'Space Mono',monospace; position:relative; }
+.nlink::after { content:''; position:absolute; bottom:-4px; left:0; right:0; height:1px; background:var(--c1); transform:scaleX(0); transition:transform .2s; }
+.nlink:hover { color:var(--c1); }
+.nlink:hover::after { transform:scaleX(1); }
+
+.nright { display:flex; align-items:center; gap:12px; }
+.nuser {
+  display:flex; align-items:center; gap:8px; padding:6px 14px;
+  background:rgba(0,245,255,0.05); border:1px solid var(--border);
+  font-size:12px; font-family:'Space Mono',monospace; letter-spacing:1px;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+.navatar {
+  width:22px; height:22px;
+  background: linear-gradient(135deg, var(--c1), var(--c2));
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#000;
+}
+.nlout { color:var(--t3); font-size:10px; cursor:pointer; padding:6px 12px; transition:all .2s; border:1px solid transparent; font-family:'Space Mono',monospace; letter-spacing:1px; }
+.nlout:hover { color:var(--danger); border-color:rgba(255,56,96,0.3); }
+
+/* ── HERO ── */
+.hero {
+  padding: 100px max(20px,calc((100vw - 1200px)/2)) 60px;
+  position:relative; overflow:hidden; min-height:80vh;
+  display:flex; align-items:center;
+}
+.hero-bg {
+  position:absolute; inset:0;
+  background:
+    radial-gradient(ellipse 60% 80% at 80% 50%, rgba(0,119,255,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 20% 80%, rgba(123,47,255,0.06) 0%, transparent 60%);
+}
+.hero-grid {
+  position:absolute; inset:0;
+  background-image:
+    linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+}
+.hero-content { position:relative; z-index:2; max-width:700px; }
+
+.hbadge {
+  display:inline-flex; align-items:center; gap:8px;
+  border:1px solid rgba(0,245,255,0.3); padding:5px 16px;
+  font-size:9px; font-weight:700; color:var(--c1); letter-spacing:3px; text-transform:uppercase;
+  margin-bottom:28px; font-family:'Space Mono',monospace;
+  background:rgba(0,245,255,0.05);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+.hbadge::before { content:''; width:5px; height:5px; background:var(--c1); border-radius:50%; animation:blink 1.5s infinite; box-shadow:0 0 6px var(--c1); }
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+.hero h1 {
+  font-family:'Bebas Neue',sans-serif;
+  font-size: clamp(54px,8vw,110px);
+  font-weight:400; line-height:0.92; letter-spacing:4px;
+  margin-bottom:6px;
+  text-shadow: 0 0 80px rgba(0,245,255,0.1);
+}
+.hero h1 .ac {
+  background:var(--cg);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  filter:drop-shadow(0 0 30px rgba(0,245,255,0.4));
+}
+.hero h1 .dim { opacity:0.25; }
+
+.hero-sub {
+  font-family:'Bebas Neue',sans-serif;
+  font-size: clamp(20px,3vw,36px);
+  letter-spacing:6px; color:var(--t2); margin-bottom:20px;
+}
+
+.hdesc { font-size:15px; color:var(--t2); max-width:500px; line-height:1.8; margin-bottom:40px; font-weight:500; }
+
+.hstats { display:flex; gap:0; flex-wrap:wrap; }
+.hstat {
+  padding:16px 28px; border:1px solid var(--border);
+  border-right:none; position:relative;
+  background:rgba(0,245,255,0.02);
+}
+.hstat:last-child { border-right:1px solid var(--border); }
+.hstat::before { content:''; position:absolute; top:0; left:0; width:2px; height:100%; background:var(--cg); }
+.hstat .n { font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:2px; background:var(--cg); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hstat .l { font-size:9px; color:var(--t3); text-transform:uppercase; letter-spacing:2px; font-family:'Space Mono',monospace; }
+
+/* Hero 3D Object */
+.hero-3d {
+  position:absolute; right:max(20px,calc((100vw - 1200px)/2)); top:50%;
+  transform:translateY(-50%);
+  width:400px; height:400px;
+  pointer-events:none;
+}
+#hero3d { width:100%; height:100%; }
+
+/* ── GLINE ── */
+.gline { height:1px; background:linear-gradient(90deg, transparent, var(--c1), var(--c2), var(--c3), transparent); opacity:0.3; margin:0; }
+
+/* ── SCANNER ── */
+.scan-sec { padding:0 max(20px,calc((100vw - 1200px)/2)) 80px; }
+.scan-card {
+  background:linear-gradient(135deg, rgba(7,11,26,0.9), rgba(11,16,37,0.9));
+  border:1px solid var(--border); padding:40px; position:relative; overflow:hidden;
+  clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 24px 100%, 0 calc(100% - 24px));
+}
+.scan-card::before { content:''; position:absolute; top:-100px; right:-100px; width:400px; height:400px; background:radial-gradient(circle, rgba(0,119,255,0.08) 0%, transparent 70%); pointer-events:none; }
+.scan-card::after { content:'SCANNER ACTIVE'; position:absolute; top:14px; right:24px; font-family:'Space Mono',monospace; font-size:8px; color:var(--safe); letter-spacing:3px; opacity:0.6; }
+
+.scan-title { font-family:'Bebas Neue',sans-serif; font-size:36px; letter-spacing:3px; margin-bottom:4px; }
+.scan-sub { color:var(--t2); font-size:12px; font-family:'Space Mono',monospace; letter-spacing:1px; margin-bottom:28px; }
+
+.mtabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:24px; }
+.mtab {
+  display:flex; align-items:center; gap:7px; padding:8px 16px;
+  background:rgba(0,0,0,0.3); border:1px solid var(--border);
+  font-size:11px; font-weight:700; color:var(--t3); cursor:pointer; transition:all .2s;
+  letter-spacing:1px; text-transform:uppercase; font-family:'Space Mono',monospace;
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+.mtab:hover { border-color:var(--border2); color:var(--c1); }
+.mtab.on { background:rgba(0,245,255,0.08); border-color:var(--c1); color:var(--c1); box-shadow:0 0 12px rgba(0,245,255,0.1); }
+
+#sinput {
+  width:100%; min-height:120px;
+  background:rgba(0,0,0,0.4); border:1px solid var(--border); border-left:2px solid var(--c2);
+  padding:16px 18px; color:var(--t); font-size:14px; font-family:'Rajdhani',sans-serif;
+  font-weight:500; resize:vertical; outline:none; transition:all .2s; line-height:1.6; margin-bottom:16px;
+  border-radius:2px;
+}
+#sinput:focus { border-color:var(--c1); border-left-color:var(--c1); box-shadow:0 0 0 2px rgba(0,245,255,0.06); }
+#sinput::placeholder { color:var(--t3); }
+
+.sfoot { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+.shint { font-size:11px; color:var(--t3); font-family:'Space Mono',monospace; letter-spacing:0.5px; }
+
+.sbtn {
+  display:flex; align-items:center; gap:10px; padding:13px 30px;
+  background:transparent; border:1px solid var(--c1); color:var(--c1);
+  font-size:12px; font-weight:700; cursor:pointer; transition:all .3s;
+  font-family:'Space Mono',monospace; letter-spacing:3px; text-transform:uppercase;
+  position:relative; overflow:hidden;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+.sbtn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg, var(--c1), var(--c2)); opacity:0; transition:opacity .3s; }
+.sbtn:hover::before { opacity:0.15; }
+.sbtn:hover { box-shadow:0 0 24px rgba(0,245,255,0.3); color:#fff; }
+.sbtn span { position:relative; z-index:1; }
+.sbtn:disabled { opacity:.4; cursor:not-allowed; }
+
+/* Results */
+.rcard { margin-top:24px; background:rgba(0,0,0,0.3); border:1px solid var(--border); padding:28px; display:none; animation:sup .4s cubic-bezier(.17,.67,.46,1.07); }
+@keyframes sup{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+.rcard.on{display:block;}
+.rheader{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.vbadge{display:flex;align-items:center;gap:8px;padding:8px 20px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;}
+.vbadge.safe{background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);color:var(--safe);}
+.vbadge.suspicious{background:rgba(255,184,0,0.1);border:1px solid rgba(255,184,0,0.3);color:var(--warn);}
+.vbadge.fake{background:rgba(255,56,96,0.1);border:1px solid rgba(255,56,96,0.3);color:var(--danger);}
+.tscore{font-family:'Bebas Neue',sans-serif;font-size:52px;letter-spacing:2px;line-height:1;}
+.tslabel{font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:2px;font-family:'Space Mono',monospace;}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px;}
+.sbar{background:rgba(0,0,0,0.3);border:1px solid var(--border);border-left:2px solid var(--c2);padding:14px 16px;}
+.sname{font-size:10px;color:var(--t2);margin-bottom:6px;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-family:'Space Mono',monospace;}
+.spct{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;margin-bottom:8px;}
+.btrack{height:3px;background:rgba(255,255,255,0.05);overflow:hidden;}
+.bfill{height:100%;transition:width 1s cubic-bezier(.17,.67,.46,1.07);}
+.rexpl{background:rgba(0,245,255,0.03);border:1px solid var(--border);border-left:2px solid var(--c1);padding:16px 18px;font-size:13px;color:var(--t2);line-height:1.7;font-weight:500;}
+.loading{display:flex;align-items:center;justify-content:center;gap:12px;padding:36px;font-size:12px;color:var(--t2);font-family:'Space Mono',monospace;letter-spacing:2px;}
+.spin{width:16px;height:16px;border:2px solid rgba(0,245,255,0.1);border-top-color:var(--c1);border-radius:50%;animation:sp .8s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* ── HOW IT WORKS ── */
+section { padding:80px max(20px,calc((100vw - 1200px)/2)); }
+.sh { margin-bottom:50px; }
+.stag { font-family:'Space Mono',monospace; font-size:9px; color:var(--c1); text-transform:uppercase; letter-spacing:4px; margin-bottom:12px; opacity:0.7; }
+.stitle { font-family:'Bebas Neue',sans-serif; font-size:clamp(36px,4vw,56px); font-weight:400; letter-spacing:4px; line-height:1; }
+.ssub { color:var(--t2); font-size:14px; margin-top:10px; max-width:500px; line-height:1.7; font-weight:500; }
+
+.howgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:2px; }
+.hwc {
+  background:rgba(7,11,26,0.8); border:1px solid var(--border); padding:30px;
+  transition:all .3s; position:relative; overflow:hidden;
+}
+.hwc::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg, rgba(0,245,255,0.03), transparent); opacity:0; transition:opacity .3s; }
+.hwc:hover { border-color:var(--border2); }
+.hwc:hover::before { opacity:1; }
+.hwn { font-family:'Bebas Neue',sans-serif; font-size:60px; letter-spacing:2px; color:var(--c1); opacity:0.08; line-height:1; margin-bottom:8px; }
+.hwic { font-size:28px; margin-bottom:14px; }
+.hwt { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px; margin-bottom:8px; }
+.hwd { font-size:13px; color:var(--t2); line-height:1.7; font-weight:500; }
+
+/* ── DASHBOARD ── */
+.dgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:2px; margin-bottom:2px; }
+.dc {
+  background:rgba(7,11,26,0.8); border:1px solid var(--border); padding:24px;
+  transition:all .2s; position:relative; overflow:hidden;
+}
+.dc::before { content:''; position:absolute; top:0; left:0; width:2px; height:100%; background:var(--cg); }
+.dc:hover { border-color:var(--border2); }
+.dc-ic { font-size:20px; margin-bottom:8px; }
+.dc-n { font-family:'Bebas Neue',sans-serif; font-size:42px; letter-spacing:2px; background:var(--cg); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height:1; }
+.dc-l { font-size:9px; color:var(--t3); margin-top:4px; text-transform:uppercase; letter-spacing:2px; font-family:'Space Mono',monospace; }
+.dhist { background:rgba(7,11,26,0.8); border:1px solid var(--border); padding:28px; margin-top:2px; }
+.dhist h3 { font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:2px; margin-bottom:20px; color:var(--t2); }
+.hempty { color:var(--t3); font-size:12px; text-align:center; padding:40px; font-family:'Space Mono',monospace; letter-spacing:1px; }
+.hi { display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--border); }
+.hi:last-child { border-bottom:none; }
+.hscore { width:42px; height:42px; display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:16px; flex-shrink:0; border:1px solid; }
+.hscore.safe { border-color:rgba(0,255,136,0.3); color:var(--safe); background:rgba(0,255,136,0.05); }
+.hscore.suspicious { border-color:rgba(255,184,0,0.3); color:var(--warn); background:rgba(255,184,0,0.05); }
+.hscore.fake { border-color:rgba(255,56,96,0.3); color:var(--danger); background:rgba(255,56,96,0.05); }
+.hinfo { flex:1; min-width:0; }
+.htxt { font-size:13px; color:var(--t); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600; }
+.hmeta { font-size:10px; color:var(--t3); margin-top:2px; font-family:'Space Mono',monospace; }
+.hbadge { font-size:9px; font-weight:700; padding:3px 9px; font-family:'Space Mono',monospace; flex-shrink:0; letter-spacing:1px; border:1px solid; }
+.hbadge.safe { border-color:rgba(0,255,136,0.3); color:var(--safe); }
+.hbadge.suspicious { border-color:rgba(255,184,0,0.3); color:var(--warn); }
+.hbadge.fake { border-color:rgba(255,56,96,0.3); color:var(--danger); }
+
+/* ── FOUNDERS ── */
+.fgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:24px; max-width:600px; }
+.fcard {
+  background:linear-gradient(135deg, rgba(7,11,26,0.95), rgba(11,16,37,0.9));
+  border:1px solid var(--border); padding:36px; position:relative; overflow:hidden; transition:all .3s;
+  clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+}
+.fcard::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg, rgba(0,245,255,0.03), transparent); opacity:0; transition:opacity .3s; }
+.fcard:hover { border-color:var(--border2); box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+.fcard:hover::before { opacity:1; }
+.fcard::after { content:'FOUNDER'; position:absolute; top:16px; right:20px; font-family:'Space Mono',monospace; font-size:8px; color:var(--c1); letter-spacing:3px; opacity:0.4; }
+
+.favatar {
+  width:70px; height:70px; margin-bottom:20px;
+  background:linear-gradient(135deg, var(--c1), var(--c2));
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display:flex; align-items:center; justify-content:center; position:relative;
+}
+.favatar::before {
+  content:''; position:absolute; inset:3px;
+  background:var(--bg2);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.favatar span { position:relative; z-index:1; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:2px; background:var(--cg); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.fname { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:2px; margin-bottom:3px; }
+.frole { font-size:9px; color:var(--c1); font-weight:700; text-transform:uppercase; letter-spacing:2px; margin-bottom:14px; font-family:'Space Mono',monospace; }
+.fbio { font-size:13px; color:var(--t2); line-height:1.8; margin-bottom:18px; font-weight:500; }
+.ftags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+.ftag { font-size:9px; padding:3px 10px; background:rgba(0,245,255,0.05); border:1px solid var(--border); color:var(--t2); font-family:'Space Mono',monospace; letter-spacing:1px; }
+.flinks { display:flex; gap:8px; flex-wrap:wrap; }
+.flink { padding:7px 14px; background:rgba(0,0,0,0.3); border:1px solid var(--border); font-size:11px; color:var(--t2); text-decoration:none; transition:all .2s; font-family:'Space Mono',monospace; letter-spacing:1px; }
+.flink:hover { border-color:var(--c1); color:var(--c1); }
+.fvcs { display:flex; flex-wrap:wrap; gap:5px; margin-top:14px; }
+.fvc { font-size:9px; padding:3px 9px; background:rgba(0,245,255,0.05); border:1px solid rgba(0,245,255,0.15); color:var(--c1); font-family:'Space Mono',monospace; letter-spacing:1px; }
+
+/* ── PRICING ── */
+.pgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:2px; }
+.pcard {
+  background:rgba(7,11,26,0.8); border:1px solid var(--border); padding:34px;
+  position:relative; overflow:hidden; transition:all .3s;
+}
+.pcard.feat { border-color:var(--c1); box-shadow:0 0 40px rgba(0,245,255,0.1); }
+.pcard.feat::before { content:'RECOMMENDED'; position:absolute; top:16px; right:16px; font-family:'Space Mono',monospace; font-size:8px; font-weight:700; color:var(--c1); background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); padding:3px 9px; letter-spacing:2px; }
+.pcard:hover:not(.feat) { border-color:var(--border2); transform:translateY(-4px); }
+.ptier { font-family:'Space Mono',monospace; font-size:9px; color:var(--t3); text-transform:uppercase; letter-spacing:3px; margin-bottom:16px; }
+.pamt { font-family:'Bebas Neue',sans-serif; font-size:48px; letter-spacing:2px; line-height:1; margin-bottom:2px; background:var(--cg); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.pamt span { font-size:16px; font-family:'Rajdhani',sans-serif; -webkit-text-fill-color:var(--t3); color:var(--t3); }
+.pper { font-size:11px; color:var(--t3); margin-bottom:24px; font-family:'Space Mono',monospace; }
+.pfeats { list-style:none; margin-bottom:26px; }
+.pfeats li { font-size:13px; padding:8px 0; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; color:var(--t2); font-weight:500; }
+.pfeats li:last-child { border-bottom:none; }
+.pfeats li::before { content:'//'; color:var(--c1); font-weight:700; flex-shrink:0; font-family:'Space Mono',monospace; font-size:10px; }
+.pbtn {
+  width:100%; padding:12px; font-size:11px; font-weight:700; cursor:pointer; transition:all .2s;
+  font-family:'Space Mono',monospace; border:1px solid var(--border); background:transparent;
+  color:var(--t2); letter-spacing:2px; text-transform:uppercase;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+.pbtn.feat { background:rgba(0,245,255,0.08); border-color:var(--c1); color:var(--c1); }
+.pbtn:hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(0,245,255,0.1); }
+
+/* ── THEME BAR ── */
+.tbar { position:fixed; bottom:24px; right:24px; z-index:200; display:flex; gap:6px; background:rgba(7,11,26,0.9); border:1px solid var(--border); padding:10px; box-shadow:0 8px 32px rgba(0,0,0,0.5); clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+.tdot { width:18px; height:18px; cursor:pointer; transition:transform .2s; border:1px solid transparent; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+.tdot:hover { transform:scale(1.25); }
+.tdot.on { border-color:#fff; }
+
+/* ── TOAST ── */
+.toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--bg2); border:1px solid var(--border); padding:11px 20px; font-size:11px; z-index:300; display:flex; align-items:center; gap:8px; opacity:0; transition:all .3s; pointer-events:none; font-family:'Space Mono',monospace; letter-spacing:1px; }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+.toast.err { border-color:rgba(255,56,96,0.4); color:var(--danger); }
+.toast.ok { border-color:rgba(0,255,136,0.4); color:var(--safe); }
+
+/* ── FOOTER ── */
+footer { border-top:1px solid var(--border); padding:40px max(20px,calc((100vw - 1200px)/2)); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:18px; position:relative; }
+footer::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg, transparent, var(--c1), var(--c2), transparent); opacity:0.3; }
+.ftxt { font-size:11px; color:var(--t3); font-family:'Space Mono',monospace; }
+.ftxt a { color:var(--c1); text-decoration:none; }
+.fls { display:flex; gap:20px; }
+.fl { font-size:10px; color:var(--t3); text-decoration:none; transition:color .2s; font-family:'Space Mono',monospace; letter-spacing:1px; text-transform:uppercase; }
+.fl:hover { color:var(--c1); }
+
+/* ── REVEAL ANIMATION ── */
+.rev { opacity:0; transform:translateY(28px); transition:all .7s cubic-bezier(.17,.67,.46,1.07); }
+.rev.visible { opacity:1; transform:translateY(0); }
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px) {
+  .hero h1 { font-size:54px; }
+  .hero-3d { display:none; }
+  .nlinks { display:none; }
+  .fgrid,.pgrid { grid-template-columns:1fr; }
+  .mtabs { overflow-x:auto; flex-wrap:nowrap; }
+  .mtabs::-webkit-scrollbar { display:none; }
+  .hstats { gap:0; }
+  .hstat { padding:12px 18px; }
+}
+
+/* ── FETCHED CONTENT PANEL ── */
+.fetch-panel {
+  margin-bottom: 20px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--c1);
+  padding: 0;
+  display: none;
+  animation: sup .4s ease;
+}
+.fetch-panel.on { display: block; }
+.fetch-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px; border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.fetch-header-left { display: flex; align-items: center; gap: 10px; }
+.fetch-status { font-family:'Space Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--c1); }
+.fetch-domain { font-family:'Space Mono',monospace; font-size:10px; color:var(--t2); }
+.fetch-toggle { font-family:'Space Mono',monospace; font-size:9px; color:var(--t3); transition:all .2s; }
+.fetch-body { padding: 18px; max-height: 0; overflow: hidden; transition: max-height .4s ease; }
+.fetch-body.open { max-height: 1200px; }
+
+/* Product info */
+.product-info { margin-bottom: 20px; }
+.product-title { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1px; margin-bottom:6px; line-height:1.2; }
+.product-meta { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:14px; }
+.product-meta-item { font-family:'Space Mono',monospace; font-size:10px; color:var(--t2); display:flex; align-items:center; gap:5px; }
+.product-meta-item span { color:var(--c1); }
+.product-price { font-family:'Bebas Neue',sans-serif; font-size:28px; color:var(--safe); letter-spacing:2px; }
+
+/* Reviews list */
+.reviews-header { font-family:'Space Mono',monospace; font-size:10px; color:var(--c1); letter-spacing:3px; text-transform:uppercase; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.review-item { background:rgba(255,255,255,0.02); border:1px solid var(--border); border-left:2px solid var(--c2); padding:14px 16px; margin-bottom:10px; }
+.review-item:last-child { margin-bottom:0; }
+.review-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px; gap:10px; flex-wrap:wrap; }
+.review-author { font-family:'Space Mono',monospace; font-size:10px; color:var(--c1); letter-spacing:1px; }
+.review-date { font-family:'Space Mono',monospace; font-size:9px; color:var(--t3); }
+.review-stars { color:var(--warn); font-size:12px; margin-bottom:6px; }
+.review-title { font-weight:700; font-size:13px; margin-bottom:6px; color:var(--t); }
+.review-body { font-size:12px; color:var(--t2); line-height:1.7; font-weight:500; }
+.review-verified { display:inline-block; font-family:'Space Mono',monospace; font-size:8px; padding:2px 8px; background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2); color:var(--safe); letter-spacing:1px; margin-top:8px; }
+.review-flag { display:inline-block; font-family:'Space Mono',monospace; font-size:8px; padding:2px 8px; background:rgba(255,56,96,0.08); border:1px solid rgba(255,56,96,0.2); color:var(--danger); letter-spacing:1px; margin-top:8px; margin-left:6px; }
+
+/* fetch loading */
+.fetch-loading { display:flex; align-items:center; gap:10px; padding:16px; font-family:'Space Mono',monospace; font-size:11px; color:var(--t2); letter-spacing:1px; }
+.fetch-err { padding:14px 18px; font-family:'Space Mono',monospace; font-size:10px; color:var(--warn); letter-spacing:1px; }
+
+/* news article panel */
+.article-content { font-size:13px; color:var(--t2); line-height:1.8; font-weight:500; }
+.article-meta { display:flex; gap:14px; margin-bottom:14px; flex-wrap:wrap; }
+.article-meta span { font-family:'Space Mono',monospace; font-size:9px; color:var(--t3); letter-spacing:1px; }
+.article-meta strong { color:var(--c1); }
+
+</style>
+</head>
+<body>
+<div id="cur"></div><div id="cur2"></div>
+<canvas id="bgc"></canvas>
+<div class="scan-lines"></div>
+<div class="vignette"></div>
+
+<!-- ═══════════════════════════════ AUTH ═══════════════════════════════ -->
+<div id="auth">
+  <div class="abox">
+    <div class="alogo">
+      <div class="alogo-hex"><span>V</span></div>
+      <div class="alogo-tx">VERI<em style="background:var(--cg);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">AI</em></div>
+    </div>
+    <div class="atabs">
+      <div class="atab on" onclick="tab('login')">Sign In</div>
+      <div class="atab" onclick="tab('signup')">Sign Up</div>
+    </div>
+    <div class="aform on" id="f-login">
+      <div class="atitle">WELCOME BACK</div>
+      <div class="asub">// authenticate to continue</div>
+      <div class="fi"><label>Email Address</label><input type="email" id="le" placeholder="you@example.com"></div>
+      <div class="fi"><label>Password</label><input type="password" id="lp" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="aerr" id="lerr">⚠ Invalid credentials. Access denied.</div>
+      <button class="abtn" onclick="doLogin()"><span>AUTHENTICATE →</span></button>
+      <div class="adiv">// OR //</div>
+      <div class="soc">
+        <div class="socbtn" onclick="showToast('OAuth integration coming soon','err')">⬡ Google</div>
+        <div class="socbtn" onclick="showToast('OAuth integration coming soon','err')">⬡ GitHub</div>
+      </div>
+    </div>
+    <div class="aform" id="f-signup">
+      <div class="atitle">CREATE ACCOUNT</div>
+      <div class="asub">// initialize new user profile</div>
+      <div class="fi"><label>Full Name</label><input type="text" id="sn" placeholder="Your full name"></div>
+      <div class="fi"><label>Email Address</label><input type="email" id="se" placeholder="you@example.com"></div>
+      <div class="fi"><label>Password</label><input type="password" id="sp" placeholder="Min 6 characters"></div>
+      <div class="fi"><label>Confirm Password</label><input type="password" id="sp2" placeholder="Repeat password"></div>
+      <div class="aerr" id="serr">⚠ Please fill all fields correctly.</div>
+      <div class="aok" id="sok">✓ Profile created. Authenticating...</div>
+      <button class="abtn" onclick="doSignup()"><span>INITIALIZE ACCOUNT →</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ APP ═══════════════════════════════ -->
+<div id="app">
+<nav>
+  <a class="nlogo" href="#">
+    <div class="nlogo-hex"><span>V</span></div>
+    <div class="nlogo-tx">VERI<em>AI</em></div>
+  </a>
+  <div class="nlinks">
+    <a class="nlink" href="#scanner">Scanner</a>
+    <a class="nlink" href="#dashboard">Dashboard</a>
+    <a class="nlink" href="#how">How It Works</a>
+    <a class="nlink" href="#founders">About</a>
+    <a class="nlink" href="#pricing">Pricing</a>
+  </div>
+  <div class="nright">
+    <div class="nuser">
+      <div class="navatar" id="navatar">A</div>
+      <span id="navname" style="font-weight:700;letter-spacing:1px;">User</span>
+    </div>
+    <div class="nlout" onclick="doLogout()">Sign Out</div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero" id="home">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hbadge">● AI-Powered Trust Engine — Online</div>
+    <h1>DON'T GET<br><span class="ac">DECEIVED.</span><br><span class="dim">VERIFY</span> EVERYTHING.</h1>
+    <div class="hero-sub">99.2% ACCURACY</div>
+    <p class="hdesc">VeriAI uses advanced AI to detect fake reviews, deepfakes, misinformation and suspicious profiles — with transparent trust scores and full signal breakdowns.</p>
+    <div class="hstats">
+      <div class="hstat"><div class="n" id="stat-t">0</div><div class="l">Total Scans</div></div>
+      <div class="hstat"><div class="n" id="stat-f">0</div><div class="l">Fakes Caught</div></div>
+      <div class="hstat"><div class="n">99.2%</div><div class="l">AI Accuracy</div></div>
+      <div class="hstat"><div class="n">&lt;3s</div><div class="l">Scan Time</div></div>
+    </div>
+  </div>
+  <div class="hero-3d"><canvas id="hero3d"></canvas></div>
+</div>
+
+<div class="gline"></div>
+
+<!-- SCANNER -->
+<div class="scan-sec" id="scanner">
+  <div class="scan-card rev">
+    <div class="scan-title">ANALYZE CONTENT</div>
+    <div class="scan-sub">// paste any URL, text, image link, or social profile for instant AI trust score</div>
+    <div class="mtabs" id="mtabs">
+      <div class="mtab on" data-mode="fake_reviews" onclick="setMode(this)">★ FAKE REVIEWS</div>
+      <div class="mtab" data-mode="deepfake" onclick="setMode(this)">◈ DEEPFAKE</div>
+      <div class="mtab" data-mode="fake_news" onclick="setMode(this)">◉ FAKE NEWS</div>
+      <div class="mtab" data-mode="profile" onclick="setMode(this)">◎ PROFILE</div>
+      <div class="mtab" data-mode="url" onclick="setMode(this)">⟁ URL CHECK</div>
+    </div>
+    <textarea id="sinput" placeholder="Paste any review text or product URL for instant analysis..."></textarea>
+    <!-- FETCHED CONTENT PANEL -->
+    <div class="fetch-panel" id="fetchPanel">
+      <div class="fetch-header" onclick="toggleFetchPanel()">
+        <div class="fetch-header-left">
+          <div class="fetch-status" id="fetchStatus">◉ CONTENT FETCHED</div>
+          <div class="fetch-domain" id="fetchDomain"></div>
+        </div>
+        <div class="fetch-toggle" id="fetchToggle">▼ SHOW</div>
+      </div>
+      <div class="fetch-body" id="fetchBody">
+        <div id="fetchContent"></div>
+      </div>
+    </div>
+
+    <div class="sfoot">
+      <div class="shint" id="shint">// paste any review text or product URL for instant analysis</div>
+      <button class="sbtn" id="sbtn" onclick="doScan()"><span>ANALYZE NOW</span><span style="font-size:16px;">→</span></button>
+    </div>
+    <div class="rcard" id="rcard"><div id="rcontent"></div></div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="sh rev">
+    <div class="stag">// PROCESS</div>
+    <div class="stitle">HOW VERIAI WORKS</div>
+    <div class="ssub">From raw content to verified trust verdict in under 3 seconds.</div>
+  </div>
+  <div class="howgrid rev">
+    <div class="hwc"><div class="hwn">01</div><div class="hwic">📥</div><div class="hwt">INPUT CONTENT</div><div class="hwd">Paste reviews, news articles, image URLs, social profiles, or any web URL into the scanner.</div></div>
+    <div class="hwc"><div class="hwn">02</div><div class="hwic">🧠</div><div class="hwt">AI ANALYSIS</div><div class="hwd">Content is processed by Llama AI via Groq with precision-engineered prompts returning structured JSON analysis.</div></div>
+    <div class="hwc"><div class="hwn">03</div><div class="hwic">📊</div><div class="hwt">SIGNAL BREAKDOWN</div><div class="hwd">Four independent trust signals are scored and combined into a final verdict with full explanation.</div></div>
+    <div class="hwc"><div class="hwn">04</div><div class="hwic">🛡️</div><div class="hwt">YOUR DASHBOARD</div><div class="hwd">All scans logged to your personal history. SAFE, SUSPICIOUS, or FAKE — every time.</div></div>
+  </div>
+</section>
+
+<div class="gline"></div>
+
+<!-- DASHBOARD -->
+<section id="dashboard">
+  <div class="sh rev"><div class="stag">// DASHBOARD</div><div class="stitle">SCAN HISTORY</div><div class="ssub">Every verification you've run, logged and tracked.</div></div>
+  <div class="dgrid rev">
+    <div class="dc"><div class="dc-ic">🔍</div><div class="dc-n" id="d-total">0</div><div class="dc-l">Total Scans</div></div>
+    <div class="dc"><div class="dc-ic">🚨</div><div class="dc-n" id="d-fakes">0</div><div class="dc-l">Fakes Caught</div></div>
+    <div class="dc"><div class="dc-ic">✅</div><div class="dc-n" id="d-safe">0</div><div class="dc-l">Safe Content</div></div>
+    <div class="dc"><div class="dc-ic">📈</div><div class="dc-n" id="d-avg">—</div><div class="dc-l">Avg Trust Score</div></div>
+  </div>
+  <div class="dhist rev">
+    <h3>◈ SCAN HISTORY</h3>
+    <div id="hist-list"><div class="hempty">// no scans yet — run your first analysis above ↑</div></div>
+  </div>
+</section>
+
+<div class="gline"></div>
+
+<!-- FOUNDERS -->
+<section id="founders">
+  <div class="sh rev"><div class="stag">// TEAM</div><div class="stitle">THE BUILDER</div><div class="ssub">Built by someone who believes trust is a right, not a privilege.</div></div>
+  <div class="fgrid rev">
+    <div class="fcard">
+      <div class="favatar"><span>AD</span></div>
+      <div class="fname">ADITYA DESALE</div>
+      <div class="frole">Founder & CEO · Full-Stack AI Developer</div>
+      <div class="fbio">Self-taught developer and founder from India building intelligent web systems from zero to deployed. Ships AI platforms, EdTech universes, and API ecosystems solo — end to end. Creator of Kendu AI, NEXUS 3D, and the Kendu API. VeriAI is his mission to make trust verification accessible to everyone online.</div>
+      <div class="ftags">
+        <div class="ftag">AI/LLMs</div><div class="ftag">Full-Stack</div><div class="ftag">Node.js</div>
+        <div class="ftag">Groq API</div><div class="ftag">Product Strategy</div>
+      </div>
+      <div class="flinks">
+        <a class="flink" href="https://adityadesale.online" target="_blank">⟁ Portfolio</a>
+        <a class="flink" href="https://kendu.online" target="_blank">◈ Kendu AI</a>
+        <a class="flink" href="/cdn-cgi/l/email-protection#402124292425332c2500272d21292c6e232f2d">✉ Email</a>
+      </div>
+      <div class="fvcs">
+        <span class="fvc">Bootstrapped</span><span class="fvc">Self-Funded</span>
+        <span class="fvc">India 🇮🇳</span><span class="fvc">5+ Products Shipped</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="gline"></div>
+
+<!-- PRICING -->
+<section id="pricing">
+  <div class="sh rev"><div class="stag">// PRICING</div><div class="stitle">SIMPLE PRICING</div><div class="ssub">Start free. Scale as you verify more.</div></div>
+  <div class="pgrid rev">
+    <div class="pcard">
+      <div class="ptier">// FREE TIER</div>
+      <div class="pamt">₹0<span>/mo</span></div>
+      <div class="pper">Forever free · No card required</div>
+      <ul class="pfeats">
+        <li>10 scans per month</li>
+        <li>All 5 scan modes</li>
+        <li>Basic trust score</li>
+        <li>7-day history</li>
+      </ul>
+      <button class="pbtn" onclick="showToast('You are on the Free plan','ok')">CURRENT PLAN</button>
+    </div>
+    <div class="pcard feat">
+      <div class="ptier">// PRO TIER</div>
+      <div class="pamt">₹499<span>/mo</span></div>
+      <div class="pper">Billed monthly · Cancel anytime</div>
+      <ul class="pfeats">
+        <li>Unlimited scans</li>
+        <li>Priority AI processing</li>
+        <li>Full signal breakdown</li>
+        <li>Unlimited history</li>
+        <li>CSV export</li>
+        <li>API access</li>
+      </ul>
+      <button class="pbtn feat" onclick="showToast('Payment gateway coming soon','ok')">UPGRADE TO PRO →</button>
+    </div>
+    <div class="pcard">
+      <div class="ptier">// ENTERPRISE</div>
+      <div class="pamt">₹4,999<span>/mo</span></div>
+      <div class="pper">Per workspace · Custom billing</div>
+      <ul class="pfeats">
+        <li>Everything in Pro</li>
+        <li>Team collaboration</li>
+        <li>Custom AI models</li>
+        <li>SLA support</li>
+        <li>White-label option</li>
+        <li>Dedicated account manager</li>
+      </ul>
+      <button class="pbtn" onclick="showToast('Contact adidesle@gmail.com','ok')">CONTACT SALES →</button>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="ftxt">© 2026 VERIAI · Built by <a href="https://adityadesale.online" target="_blank">Aditya Desale</a> with 🔥 obsession</div>
+  <div class="fls">
+    <a class="fl" href="#scanner">Scanner</a>
+    <a class="fl" href="#pricing">Pricing</a>
+    <a class="fl" href="/cdn-cgi/l/email-protection#2746434e4342544b4267404a464e4b0944484a">Contact</a>
+    <a class="fl" href="https://adityadesale.online" target="_blank">Portfolio</a>
+  </div>
+</footer>
+</div><!-- end #app -->
+
+<!-- THEME BAR -->
+<div class="tbar">
+  <div class="tdot on" style="background:linear-gradient(135deg,#00f5ff,#0077ff);" onclick="setTheme('cyber',this)" title="Cyber Blue"></div>
+  <div class="tdot" style="background:linear-gradient(135deg,#e11d48,#ff6b35);" onclick="setTheme('ember',this)" title="Ember Red"></div>
+  <div class="tdot" style="background:linear-gradient(135deg,#7b2fff,#c026d3);" onclick="setTheme('void',this)" title="Void Purple"></div>
+  <div class="tdot" style="background:linear-gradient(135deg,#00ff88,#00b4d8);" onclick="setTheme('matrix',this)" title="Matrix Green"></div>
+  <div class="tdot" style="background:linear-gradient(135deg,#f59e0b,#ef4444);" onclick="setTheme('solar',this)" title="Solar Gold"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ── CURSOR ──
+const cur=document.getElementById('cur'),cur2=document.getElementById('cur2');
+let mx=0,my=0,cx=0,cy=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+setInterval(()=>{cx+=(mx-cx)*.16;cy+=(my-cy)*.16;cur2.style.left=cx+'px';cur2.style.top=cy+'px';},10);
+
+// ── BG THREE.JS ──
+(function(){
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.1,1000);
+  camera.position.z=5;
+  const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('bgc'),alpha:true,antialias:true});
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  const geo=new THREE.BufferGeometry();
+  const N=2000,pos=new Float32Array(N*3);
+  for(let i=0;i<N*3;i++)pos[i]=(Math.random()-.5)*22;
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const mat=new THREE.PointsMaterial({color:0x00f5ff,size:.025,transparent:true,opacity:.5});
+  const pts=new THREE.Points(geo,mat);
+  scene.add(pts);
+  let tt=0;
+  (function anim(){requestAnimationFrame(anim);tt+=.002;pts.rotation.y=tt*.2;pts.rotation.x=tt*.08;renderer.render(scene,camera);})();
+  window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+})();
+
+// ── HERO 3D OBJECT ──
+(function(){
+  const canvas=document.getElementById('hero3d');
+  if(!canvas)return;
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(50,1,0.1,100);
+  camera.position.set(0,0,4.5);
+  const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
+  renderer.setSize(400,400);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+
+  // Outer ring
+  const ringGeo=new THREE.TorusGeometry(1.6,.015,8,80);
+  const ringMat=new THREE.MeshBasicMaterial({color:0x00f5ff,transparent:true,opacity:.5});
+  const ring=new THREE.Mesh(ringGeo,ringMat);
+  scene.add(ring);
+
+  // Inner ring
+  const ring2Geo=new THREE.TorusGeometry(1.2,.01,8,60);
+  const ring2Mat=new THREE.MeshBasicMaterial({color:0x0077ff,transparent:true,opacity:.4});
+  const ring2=new THREE.Mesh(ring2Geo,ring2Mat);
+  ring2.rotation.x=Math.PI/3;
+  scene.add(ring2);
+
+  // Icosahedron core
+  const icoGeo=new THREE.IcosahedronGeometry(0.7,1);
+  const icoMat=new THREE.MeshBasicMaterial({color:0x00f5ff,wireframe:true,transparent:true,opacity:.3});
+  const ico=new THREE.Mesh(icoGeo,icoMat);
+  scene.add(ico);
+
+  // Inner solid
+  const solidGeo=new THREE.IcosahedronGeometry(0.45,0);
+  const solidMat=new THREE.MeshBasicMaterial({color:0x0077ff,transparent:true,opacity:.15});
+  const solid=new THREE.Mesh(solidGeo,solidMat);
+  scene.add(solid);
+
+  // Particles
+  const pGeo=new THREE.BufferGeometry();
+  const pN=300,pPos=new Float32Array(pN*3);
+  for(let i=0;i<pN*3;i++)pPos[i]=(Math.random()-.5)*5;
+  pGeo.setAttribute('position',new THREE.BufferAttribute(pPos,3));
+  const pMat=new THREE.PointsMaterial({color:0x00f5ff,size:.04,transparent:true,opacity:.6});
+  const particles=new THREE.Points(pGeo,pMat);
+  scene.add(particles);
+
+  let t=0;
+  (function anim(){
+    requestAnimationFrame(anim);
+    t+=.008;
+    ico.rotation.y=t; ico.rotation.x=t*.4;
+    solid.rotation.y=-t*.7; solid.rotation.z=t*.3;
+    ring.rotation.z=t*.2; ring.rotation.x=Math.sin(t*.3)*.3;
+    ring2.rotation.y=t*.5;
+    particles.rotation.y=t*.1;
+    renderer.render(scene,camera);
+  })();
+})();
+
+// ── THEME SYSTEM ──
+const themes={
+  cyber:{'--c1':'#00f5ff','--c2':'#0077ff','--c3':'#7b2fff','--cg':'linear-gradient(135deg,#00f5ff,#0077ff,#7b2fff)','--glow':'rgba(0,245,255,0.15)'},
+  ember:{'--c1':'#ff6b35','--c2':'#e11d48','--c3':'#7f1d1d','--cg':'linear-gradient(135deg,#ff6b35,#e11d48)','--glow':'rgba(255,107,53,0.15)'},
+  void:{'--c1':'#c084fc','--c2':'#7b2fff','--c3':'#1e1b4b','--cg':'linear-gradient(135deg,#c084fc,#7b2fff,#c026d3)','--glow':'rgba(192,132,252,0.15)'},
+  matrix:{'--c1':'#00ff88','--c2':'#00b4d8','--c3':'#065f46','--cg':'linear-gradient(135deg,#00ff88,#00b4d8)','--glow':'rgba(0,255,136,0.15)'},
+  solar:{'--c1':'#fbbf24','--c2':'#f59e0b','--c3':'#7c2d12','--cg':'linear-gradient(135deg,#fbbf24,#ef4444)','--glow':'rgba(251,191,36,0.15)'},
+};
+function setTheme(name,el){
+  const t=themes[name];
+  if(!t)return;
+  Object.entries(t).forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
+  document.querySelectorAll('.tdot').forEach(d=>d.classList.remove('on'));
+  el.classList.add('on');
+}
+
+// ── AUTH ──
+function safeLS(key,def){try{return localStorage.getItem(key)||def;}catch(e){return def;}}
+function safeLSSet(key,val){try{localStorage.setItem(key,val);}catch(e){}}
+function safeLSRm(key){try{localStorage.removeItem(key);}catch(e){}}
+let users=JSON.parse(safeLS('vai_users','[]'));
+let me=JSON.parse(safeLS('vai_me','null'));
+
+function tab(t){
+  document.querySelectorAll('.atab').forEach((el,i)=>el.classList.toggle('on',i===(t==='login'?0:1)));
+  document.getElementById('f-login').classList.toggle('on',t==='login');
+  document.getElementById('f-signup').classList.toggle('on',t==='signup');
+  document.getElementById('lerr').style.display='none';
+  document.getElementById('serr').style.display='none';
+}
+
+function doSignup(){
+  const n=document.getElementById('sn').value.trim();
+  const e=document.getElementById('se').value.trim();
+  const p=document.getElementById('sp').value;
+  const p2=document.getElementById('sp2').value;
+  const err=document.getElementById('serr'),ok=document.getElementById('sok');
+  err.style.display='none';ok.style.display='none';
+  if(!n||!e||p.length<6){err.textContent='⚠ Please fill all fields (password min 6 chars).';err.style.display='block';return;}
+  if(p!==p2){err.textContent='⚠ Passwords do not match.';err.style.display='block';return;}
+  if(!e.includes('@')){err.textContent='⚠ Enter a valid email address.';err.style.display='block';return;}
+  if(users.find(u=>u.e===e)){err.textContent='⚠ Email already registered. Sign in instead.';err.style.display='block';return;}
+  const u={n,e,p,scans:[],created:Date.now()};
+  users.push(u);
+  safeLSSet('vai_users',JSON.stringify(users));
+  ok.style.display='block';
+  setTimeout(()=>login(u),1100);
+}
+
+function doLogin(){
+  const e=document.getElementById('le').value.trim();
+  const p=document.getElementById('lp').value;
+  const err=document.getElementById('lerr');
+  err.style.display='none';
+  if(!e||!p){err.textContent='⚠ Please enter your email and password.';err.style.display='block';return;}
+  const u=users.find(u=>u.e===e&&u.p===p);
+  if(!u){err.textContent='⚠ Invalid email or password. Try again.';err.style.display='block';return;}
+  login(u);
+}
+
+function login(u){
+  me=u;
+  safeLSSet('vai_me',JSON.stringify(u));
+  document.getElementById('auth').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('navatar').textContent=u.n.charAt(0).toUpperCase();
+  document.getElementById('navname').textContent=u.n.split(' ')[0].toUpperCase();
+  updateDash();
+  initReveal();
+}
+
+function doLogout(){
+  me=null;
+  safeLSRm('vai_me');
+  document.getElementById('app').style.display='none';
+  document.getElementById('auth').style.display='flex';
+  document.getElementById('le').value='';
+  document.getElementById('lp').value='';
+  tab('login');
+}
+
+
+
+// ── SCAN MODES ──
+const modeData={
+  fake_reviews:{ph:'Paste review text, product URL, or seller profile to check for fake reviews...',hint:'// works with Amazon, Flipkart, Google Reviews, and more'},
+  deepfake:{ph:'Paste image URL or describe image/video content to analyze for deepfake signals...',hint:'// analyzes visual artifacts, metadata patterns, and contextual consistency'},
+  fake_news:{ph:'Paste news article, headline, or news URL to verify authenticity...',hint:'// checks source credibility, claim patterns, and emotional manipulation tactics'},
+  profile:{ph:'Paste social media profile URL, username, or bio text to analyze...',hint:'// detects bot patterns, fake followers, suspicious activity'},
+  url:{ph:'Paste any URL to check for phishing, scams, or malicious content...',hint:'// analyzes domain patterns, redirects, and known threat indicators'},
+};
+let curMode='fake_reviews';
+
+function setMode(el){
+  document.querySelectorAll('.mtab').forEach(m=>m.classList.remove('on'));
+  el.classList.add('on');
+  curMode=el.dataset.mode;
+  const m=modeData[curMode];
+  document.getElementById('sinput').placeholder=m.ph;
+  document.getElementById('shint').textContent=m.hint;
+}
+
+// ── URL DETECTION ──
+function isURL(str){
+  try{new URL(str);return str.startsWith('http://')||str.startsWith('https://');}catch{return false;}
+}
+function getDomain(url){try{return new URL(url).hostname.replace('www.','');}catch{return url;}}
+function isAmazon(url){return /amazon\.(in|com|co\.uk|de|fr|ca|com\.au)/i.test(url);}
+function isFlipkart(url){return /flipkart\.com/i.test(url);}
+function isNews(url){return /news|article|blog|medium\.com|ndtv|theguardian|bbc|cnn|times|hindustan|scroll\.in/i.test(url);}
+
+// ── FETCH PAGE CONTENT VIA CORS PROXY ──
+async function fetchPageContent(url){
+  const enc=encodeURIComponent(url);
+  // Try multiple CORS proxies in sequence — ordered by reliability
+  const proxies=[
+    {url:`https://api.allorigins.win/get?url=${enc}`,type:'json',key:'contents'},
+    {url:`https://api.allorigins.win/raw?url=${enc}`,type:'text'},
+    {url:`https://corsproxy.io/?${enc}`,type:'text'},
+    {url:`https://api.codetabs.com/v1/proxy?quest=${enc}`,type:'text'},
+    {url:`https://thingproxy.freeboard.io/fetch/${url}`,type:'text'},
+    {url:`https://yacdn.org/proxy/${url}`,type:'text'},
+    {url:`https://cors-anywhere.herokuapp.com/${url}`,type:'text'},
+  ];
+  for(const proxy of proxies){
+    try{
+      const r=await fetch(proxy.url,{signal:AbortSignal.timeout(10000),headers:{'X-Requested-With':'XMLHttpRequest'}});
+      if(!r.ok)continue;
+      if(proxy.type==='json'){
+        const d=await r.json().catch(()=>null);
+        if(d&&d.contents&&d.contents.length>300)return d.contents;
+      }else{
+        const t=await r.text().catch(()=>null);
+        if(t&&t.length>300)return t;
+      }
+    }catch(e){console.warn('Proxy failed:',proxy.url,e.message);}
+  }
+  throw new Error('All proxies failed — site may block scraping');
+}
+
+// ── SMART URL METADATA EXTRACTION (no fetch needed) ──
+function extractURLMetadata(url){
+  try{
+    const u=new URL(url);
+    const domain=u.hostname.replace('www.','');
+    const path=u.pathname;
+    const params=Object.fromEntries(u.searchParams);
+    const segments=path.split('/').filter(Boolean);
+    // Try to extract meaningful info from URL structure
+    const slug=segments[segments.length-1]||'';
+    const readableTitle=slug.replace(/[-_]/g,' ').replace(/\d+/g,'').trim()||domain;
+    return{domain,path,params,segments,slug,readableTitle,fullURL:url};
+  }catch{return{domain:url,path:'',params:{},segments:[],slug:'',readableTitle:url,fullURL:url};}
+}
+
+// ── PARSE AMAZON HTML ──
+function parseAmazon(html){
+  const p=new DOMParser().parseFromString(html,'text/html');
+  const get=sel=>{const el=p.querySelector(sel);return el?el.textContent.trim():null;};
+  const title=get('#productTitle')||get('.product-title')||get('h1.a-size-large')||'Product';
+  const price=get('.a-price-whole')||get('#priceblock_ourprice')||get('.a-price .a-offscreen')||'N/A';
+  const rating=get('.a-icon-alt')||get('#acrPopover .a-icon-alt')||'N/A';
+  const ratingCount=get('#acrCustomerReviewText')||get('[data-hook="total-review-count"]')||'N/A';
+  const brand=get('#bylineInfo')||get('.po-brand .a-span9')||'Unknown';
+  
+  // Extract reviews
+  const reviewEls=p.querySelectorAll('[data-hook="review"], .review, .a-section.review');
+  const reviews=[];
+  reviewEls.forEach((el,i)=>{
+    if(i>=8)return;
+    const rTitle=el.querySelector('[data-hook="review-title"], .review-title')?.textContent?.trim()||'';
+    const rBody=el.querySelector('[data-hook="review-body"], .review-text')?.textContent?.trim()||'';
+    const rStars=el.querySelector('[data-hook="review-star-rating"], .a-icon-alt')?.textContent?.trim()||'';
+    const rAuthor=el.querySelector('.a-profile-name')?.textContent?.trim()||'Anonymous';
+    const rDate=el.querySelector('[data-hook="review-date"]')?.textContent?.trim()||'';
+    const rVerified=!!el.querySelector('[data-hook="avp-badge"]');
+    if(rBody.length>20||rTitle.length>5){
+      reviews.push({title:rTitle,body:rBody.substring(0,500),stars:rStars,author:rAuthor,date:rDate,verified:rVerified});
+    }
+  });
+  
+  return{title,price,rating,ratingCount,brand,reviews,type:'amazon'};
+}
+
+// ── PARSE FLIPKART HTML ──
+function parseFlipkart(html){
+  const p=new DOMParser().parseFromString(html,'text/html');
+  const get=sel=>{const el=p.querySelector(sel);return el?el.textContent.trim():null;};
+  const title=get('.B_NuCI')||get('h1.yhB1nd')||get('h1')||'Product';
+  const price=get('._30jeq3')||get('._16Jk6d')||'N/A';
+  const rating=get('._3LWZlK')||'N/A';
+  const ratingCount=get('._2_R_DZ span')||'N/A';
+  
+  const reviewEls=p.querySelectorAll('._1AtVbE .col.col-7-12, ._16PBlm, .t-ZTKy');
+  const reviews=[];
+  reviewEls.forEach((el,i)=>{
+    if(i>=8)return;
+    const rTitle=el.querySelector('.z9E0IG, ._2-N8zT')?.textContent?.trim()||'';
+    const rBody=el.querySelector('._6K-7Co, .row._Z81')?.textContent?.trim()||'';
+    const rStars=el.querySelector('._3LWZlK')?.textContent?.trim()||'';
+    const rAuthor=el.querySelector('._2sc7ZR, ._1wjpf6')?.textContent?.trim()||'Customer';
+    const rDate=el.querySelector('._2sc7ZR span')?.textContent?.trim()||'';
+    if(rBody.length>20){
+      reviews.push({title:rTitle,body:rBody.substring(0,500),stars:rStars,author:rAuthor,date:rDate,verified:false});
+    }
+  });
+  return{title,price,rating,ratingCount,brand:'',reviews,type:'flipkart'};
+}
+
+// ── PARSE GENERIC PAGE ──
+function parseGeneric(html,url){
+  const p=new DOMParser().parseFromString(html,'text/html');
+  // Remove scripts/styles/nav/footer
+  ['script','style','nav','footer','header','aside','[class*="ad-"]','[class*="cookie"]'].forEach(s=>{
+    p.querySelectorAll(s).forEach(el=>el.remove());
+  });
+  const title=p.querySelector('h1')?.textContent?.trim()||p.title||getDomain(url);
+  const metaDesc=p.querySelector('meta[name="description"]')?.content||'';
+  const author=p.querySelector('[rel="author"], .author, .byline, [class*="author"]')?.textContent?.trim()||'';
+  const date=p.querySelector('time, [class*="date"], [class*="published"]')?.textContent?.trim()||'';
+  // Get main content paragraphs
+  const paras=[];
+  p.querySelectorAll('article p, main p, .content p, .post-content p, p').forEach((el,i)=>{
+    if(i>=15&&paras.length>=8)return;
+    const t=el.textContent.trim();
+    if(t.length>60)paras.push(t);
+  });
+  const body=paras.slice(0,10).join(' \n\n').substring(0,3000);
+  return{title,metaDesc,author,date,body,type:'generic',domain:getDomain(url)};
+}
+
+// ── RENDER FETCHED CONTENT ──
+function renderFetchedContent(parsed,url){
+  const panel=document.getElementById('fetchPanel');
+  const content=document.getElementById('fetchContent');
+  const domain=document.getElementById('fetchDomain');
+  domain.textContent=getDomain(url);
+  panel.classList.add('on');
+
+  if(parsed.type==='amazon'||parsed.type==='flipkart'){
+    const stars='★'.repeat(Math.round(parseFloat(parsed.rating)||0))+'☆'.repeat(5-Math.round(parseFloat(parsed.rating)||0));
+    let reviewsHTML='';
+    if(parsed.reviews.length>0){
+      reviewsHTML=`<div class="reviews-header">// ${parsed.reviews.length} REVIEWS EXTRACTED</div>`+
+      parsed.reviews.map(r=>{
+        const rStars=r.stars?'★'.repeat(Math.round(parseFloat(r.stars)||3)):'';
+        const flagged=r.body.length<30||/good product|nice product|best product|very good|super|amazing|fantastic|love it|great product/i.test(r.body)&&r.body.length<80;
+        return`<div class="review-item">
+          <div class="review-top"><div class="review-author">◈ ${r.author}</div><div class="review-date">${r.date}</div></div>
+          <div class="review-stars">${rStars||r.stars||'★★★'}</div>
+          ${r.title?`<div class="review-title">${r.title}</div>`:''}
+          <div class="review-body">${r.body||'(no text content)'}</div>
+          ${r.verified?'<span class="review-verified">✓ VERIFIED PURCHASE</span>':''}
+          ${flagged?'<span class="review-flag">⚠ GENERIC PATTERN</span>':''}
+        </div>`;
+      }).join('');
+    }else{
+      reviewsHTML=`<div class="fetch-err">// No reviews extractable from this page (Amazon may block automated access). AI will analyze URL patterns instead.</div>`;
+    }
+    content.innerHTML=`
+      <div class="product-info">
+        <div class="product-title">${parsed.title}</div>
+        <div class="product-meta">
+          <div class="product-meta-item">⭐ Rating: <span>${parsed.rating}</span></div>
+          <div class="product-meta-item">💬 Reviews: <span>${parsed.ratingCount}</span></div>
+          ${parsed.brand?`<div class="product-meta-item">🏷 Brand: <span>${parsed.brand}</span>`:''}
+          <div class="product-meta-item">💰 Price: <span>${parsed.price}</span></div>
+        </div>
+      </div>
+      ${reviewsHTML}`;
+  }else{
+    content.innerHTML=`
+      <div class="product-info">
+        <div class="product-title">${parsed.title}</div>
+        <div class="product-meta">
+          ${parsed.author?`<div class="product-meta-item">✍ Author: <span>${parsed.author}</span></div>`:''}
+          ${parsed.date?`<div class="product-meta-item">📅 Date: <span>${parsed.date}</span></div>`:''}
+          <div class="product-meta-item">🌐 Domain: <span>${parsed.domain||getDomain(url)}</span></div>
+        </div>
+        ${parsed.metaDesc?`<div style="font-size:12px;color:var(--t2);margin-bottom:14px;font-style:italic;">${parsed.metaDesc}</div>`:''}
+      </div>
+      <div class="reviews-header">// PAGE CONTENT</div>
+      <div class="article-content">${parsed.body?parsed.body.replace(/\n\n/g,'<br><br>').substring(0,2500):'(Could not extract content)'}</div>`;
+  }
+}
+
+function toggleFetchPanel(){
+  const body=document.getElementById('fetchBody');
+  const toggle=document.getElementById('fetchToggle');
+  body.classList.toggle('open');
+  toggle.textContent=body.classList.contains('open')?'▲ HIDE':'▼ SHOW';
+}
+
+// ── SCAN FUNCTION ──
+async function doScan(){
+  const inp=document.getElementById('sinput').value.trim();
+  if(!inp){showToast('Please enter content to analyze','err');return;}
+  const btn=document.getElementById('sbtn');
+  btn.disabled=true;
+  const rcard=document.getElementById('rcard');
+  const rcontent=document.getElementById('rcontent');
+  const fetchPanel=document.getElementById('fetchPanel');
+  const fetchContent=document.getElementById('fetchContent');
+  const fetchStatus=document.getElementById('fetchStatus');
+  const fetchBody=document.getElementById('fetchBody');
+  
+  // Reset panels
+  fetchPanel.classList.remove('on');
+  fetchBody.classList.remove('open');
+  fetchBody.classList.remove('on');
+  rcard.classList.add('on');
+  rcontent.innerHTML='<div class="loading"><div class="spin"></div><span>ANALYZING CONTENT...</span></div>';
+
+  const modeLabels={fake_reviews:'Fake Review Detection',deepfake:'Deepfake/Image Analysis',fake_news:'Fake News Detection',profile:'Profile Analysis',url:'URL Safety Check'};
+  
+  let analysisContent=inp;
+  let fetchedData=null;
+  
+  // If URL, try to fetch real content
+  if(isURL(inp)){
+    rcontent.innerHTML='<div class="loading"><div class="spin"></div><span>FETCHING PAGE CONTENT...</span></div>';
+    // Show fetch panel with loading state
+    fetchPanel.classList.add('on');
+    document.getElementById('fetchStatus').style.color='';
+    fetchContent.innerHTML='<div class="fetch-loading"><div class="spin"></div>Fetching content from '+getDomain(inp)+'...</div>';
+    document.getElementById('fetchDomain').textContent=getDomain(inp);
+    fetchStatus.textContent='⟳ FETCHING...';
+    
+    try{
+      const html=await fetchPageContent(inp);
+      if(isAmazon(inp)){
+        fetchedData=parseAmazon(html);
+      }else if(isFlipkart(inp)){
+        fetchedData=parseFlipkart(html);
+      }else{
+        fetchedData=parseGeneric(html,inp);
+      }
+      renderFetchedContent(fetchedData,inp);
+      fetchStatus.textContent='◉ CONTENT FETCHED';
+      // Open it automatically
+      fetchBody.classList.add('on');
+      document.getElementById('fetchToggle').textContent='▲ HIDE';
+      fetchBody.classList.add('open');
+      
+      // Build rich analysis content
+      if(fetchedData.type==='amazon'||fetchedData.type==='flipkart'){
+        const revText=fetchedData.reviews.map((r,i)=>`Review ${i+1} by ${r.author} (${r.stars||'N/A'}★)${r.verified?' [Verified]':''}: "${r.title?r.title+' — ':' '}${r.body}"`).join('\n');
+        analysisContent=`Product: ${fetchedData.title}
+Brand: ${fetchedData.brand||'N/A'}
+Price: ${fetchedData.price}
+Overall Rating: ${fetchedData.rating} (${fetchedData.ratingCount})
+URL: ${inp}
+
+${fetchedData.reviews.length>0?'ACTUAL REVIEWS:\n'+revText:'Note: Reviews could not be fetched directly, analyzing URL and product metadata.'}`;
+      }else{
+        analysisContent=`URL: ${inp}
+Domain: ${fetchedData.domain}
+Title: ${fetchedData.title}
+Author: ${fetchedData.author||'Unknown'}
+Published: ${fetchedData.date||'Unknown'}
+
+Content:
+${fetchedData.body||fetchedData.metaDesc||'(No content extracted)'}`;
+      }
+    }catch(fetchErr){
+      console.warn('Fetch failed:',fetchErr);
+      fetchStatus.textContent='◉ URL ANALYZED';
+      fetchStatus.style.color='var(--warn)';
+      
+      // Extract metadata from URL structure
+      const meta=extractURLMetadata(inp);
+      
+      // Show rich URL analysis panel instead of bare error
+      fetchBody.classList.add('open');
+      document.getElementById('fetchToggle').textContent='▲ HIDE';
+      fetchContent.innerHTML=`
+        <div class="product-info">
+          <div class="product-title" style="font-size:14px;word-break:break-all;">${inp}</div>
+          <div class="product-meta">
+            <div class="product-meta-item">🌐 Domain: <span>${meta.domain}</span></div>
+            <div class="product-meta-item">📂 Path depth: <span>${meta.segments.length} segments</span></div>
+            ${meta.slug?`<div class="product-meta-item">🔗 Slug: <span>${meta.slug}</span></div>`:''}
+            ${Object.keys(meta.params).length?`<div class="product-meta-item">⚙ URL params: <span>${Object.keys(meta.params).join(', ')}</span></div>`:''}
+          </div>
+        </div>
+        <div class="reviews-header">// PROXY FETCH STATUS</div>
+        <div style="font-size:12px;color:var(--warn);padding:10px 0;font-family:'Space Mono',monospace;">
+          ⚠ Could not scrape page content — site blocks automated access.<br>
+          <span style="color:var(--t3);">AI will perform deep analysis on URL structure, domain reputation, and behavioral signals instead.</span>
+        </div>`;
+      
+      // Build a rich URL-based analysis content for the AI
+      analysisContent=`URL being analyzed: ${inp}
+Domain: ${meta.domain}
+Path: ${meta.path}
+URL segments: ${meta.segments.join(' / ')}
+URL slug/keywords: ${meta.slug.replace(/[-_]/g,' ')}
+Query parameters present: ${Object.keys(meta.params).join(', ')||'none'}
+Analysis mode: ${modeLabels[curMode]}
+
+Note: Page content could not be fetched directly (site blocks scraping). Please perform a thorough analysis based on:
+1. Domain reputation and age signals from the URL
+2. URL path structure and slug keywords
+3. Any suspicious patterns in the URL
+4. Domain TLD and structure analysis
+5. Known patterns for this type of site
+6. Common red flags for this analysis mode`;
+    }
+    rcontent.innerHTML='<div class="loading"><div class="spin"></div><span>RUNNING AI ANALYSIS...</span></div>';
+  }
+
+  const prompt=`You are VeriAI, an expert trust verification AI. Analyze the following content for: "${modeLabels[curMode]}".
+
+${analysisContent.substring(0,3500)}
+
+Respond ONLY with valid JSON, no markdown, no extra text:
+{"trust_score":<0-100>,"verdict":"<SAFE|SUSPICIOUS|FAKE>","signals":[{"name":"<signal name>","score":<0-100>,"description":"<specific finding from the actual content>"},{"name":"<signal name>","score":<0-100>,"description":"<specific finding>"},{"name":"<signal name>","score":<0-100>,"description":"<specific finding>"},{"name":"<signal name>","score":<0-100>,"description":"<specific finding>"}],"explanation":"<2-3 sentences referencing specific details from the actual content analyzed>"}`;
+
+  try{
+    const GROQ_KEY='YOUR_GROQ_API_KEY_HERE'; // Add your Groq API key from console.groq.com;
+    const body=JSON.stringify({model:'meta-llama/llama-4-scout-17b-16e-instruct',max_tokens:1200,messages:[{role:'user',content:prompt}]});
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+GROQ_KEY},body});
+    if(!res.ok){const errTxt=await res.text();throw new Error('HTTP '+res.status+': '+errTxt);}
+    const data=await res.json();
+    if(!data.choices||!data.choices[0])throw new Error('No choices in response: '+JSON.stringify(data));
+    const raw=data.choices[0].message.content.replace(/```json|```/g,'').trim();
+    let result;
+    try{result=JSON.parse(raw);}catch(pe){throw new Error('Parse failed: '+raw.substring(0,200));}
+    renderResult(result);
+    saveHistory(result,inp);
+  }catch(e){
+    console.error('VeriAI error:',e);
+    rcontent.innerHTML=`<div style="color:var(--danger);padding:20px;text-align:center;font-size:12px;font-family:'Space Mono',monospace;">⚠ ANALYSIS FAILED<br><small style="color:var(--t3);display:block;margin-top:8px;word-break:break-all;font-size:10px;">${e.message}</small><small style="color:var(--t3);display:block;margin-top:6px;">// open F12 console for full details</small></div>`;
+  }
+  btn.disabled=false;
+}
+
+function renderResult(r){
+  const vc=r.verdict.toLowerCase();
+  const color=vc==='safe'?'var(--safe)':vc==='suspicious'?'var(--warn)':'var(--danger)';
+  const emoji=vc==='safe'?'◉ SAFE':vc==='suspicious'?'◎ SUSPICIOUS':'⚠ FAKE';
+  const sigs=r.signals.map(s=>{
+    const bc=s.score>65?'var(--safe)':s.score>35?'var(--warn)':'var(--danger)';
+    return`<div class="sbar"><div class="sname">${s.name}</div><div class="spct" style="color:${bc}">${s.score}</div><div class="btrack"><div class="bfill" style="width:0%;background:${bc}" data-w="${s.score}"></div></div><div style="font-size:11px;color:var(--t3);margin-top:5px;font-family:'Space Mono',monospace;">${s.description}</div></div>`;
+  }).join('');
+  document.getElementById('rcontent').innerHTML=`
+    <div class="rheader">
+      <div class="vbadge ${vc}">${emoji}</div>
+      <div><div class="tscore" style="color:${color}">${r.trust_score}</div><div class="tslabel">Trust Score / 100</div></div>
+    </div>
+    <div class="sgrid">${sigs}</div>
+    <div class="rexpl"><strong style="color:var(--c1);font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;">// AI ANALYSIS</strong><br><br>${r.explanation}</div>`;
+  setTimeout(()=>{document.querySelectorAll('.bfill').forEach(el=>{el.style.width=el.dataset.w+'%';});},100);
+}
+
+function saveHistory(r,inp){
+  const u=users.find(x=>x.e===me.e);if(!u)return;
+  if(!u.scans)u.scans=[];
+  u.scans.unshift({text:inp.substring(0,80),score:r.trust_score,verdict:r.verdict.toLowerCase(),mode:curMode,time:Date.now()});
+  if(u.scans.length>50)u.scans=u.scans.slice(0,50);
+  safeLSSet('vai_users',JSON.stringify(users));
+  me=u;safeLSSet('vai_me',JSON.stringify(u));
+  updateDash();
+}
+
+function updateDash(){
+  const u=users.find(x=>x.e===me.e);
+  const sc=(u&&u.scans)||[];
+  const total=sc.length,fakes=sc.filter(s=>s.verdict==='fake').length,safe=sc.filter(s=>s.verdict==='safe').length;
+  const avg=total?Math.round(sc.reduce((a,b)=>a+b.score,0)/total):0;
+  document.getElementById('d-total').textContent=total;
+  document.getElementById('d-fakes').textContent=fakes;
+  document.getElementById('d-safe').textContent=safe;
+  document.getElementById('d-avg').textContent=total?avg+'%':'—';
+  document.getElementById('stat-t').textContent=total;
+  document.getElementById('stat-f').textContent=fakes;
+  const list=document.getElementById('hist-list');
+  if(!total){list.innerHTML='<div class="hempty">// no scans yet — run your first analysis above ↑</div>';return;}
+  list.innerHTML=sc.slice(0,15).map(s=>{
+    const d=new Date(s.time);
+    const dt=d.toLocaleDateString('en-IN',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    return`<div class="hi"><div class="hscore ${s.verdict}">${s.score}</div><div class="hinfo"><div class="htxt">${s.text}...</div><div class="hmeta">${s.mode.replace('_',' ')} · ${dt}</div></div><div class="hbadge ${s.verdict}">${s.verdict.toUpperCase()}</div></div>`;
+  }).join('');
+}
+
+function showToast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show '+type;
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function initReveal(){
+  // Immediately show all .rev elements (fallback for file:// and fast load)
+  document.querySelectorAll('.rev').forEach(el=>el.classList.add('visible'));
+  // Also set up observer for sections loaded later
+  try{
+    const obs=new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}});
+    },{threshold:0.05,rootMargin:'0px 0px -50px 0px'});
+    document.querySelectorAll('.rev').forEach(el=>obs.observe(el));
+  }catch(e){}
+}
+
+if(me){const fr=users.find(u=>u.e===me.e);if(fr)login(fr);}
+
+</script>
+</body>
+</html>
